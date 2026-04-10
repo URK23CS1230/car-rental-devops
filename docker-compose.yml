@@ -1,0 +1,63 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: cardb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - auth-service
+      - car-service
+      - booking-service
+
+  frontend:
+    build: ./frontend
+    environment:
+      - VITE_API_GATEWAY=http://localhost
+
+  auth-service:
+    build: ./auth-service
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/authdb
+      - JWT_SECRET=supersecret123
+    depends_on:
+      - mongodb
+
+  car-service:
+    build: ./car-service
+    environment:
+      - DATABASE_URL=postgresql://admin:adminpassword@postgres:5432/cardb
+    depends_on:
+      - postgres
+
+  booking-service:
+    build: ./booking-service
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/cardb
+      - DATABASE_USER=admin
+      - DATABASE_PASSWORD=adminpassword
+      - DATABASE_DRIVER=org.postgresql.Driver
+      - DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+    depends_on:
+      - postgres
+
+volumes:
+  mongo-data:
+  pg-data:

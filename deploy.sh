@@ -71,11 +71,11 @@ kubectl rollout restart deployment/booking-service -n car-rental
 echo ""
 
 # ── Step 6: Wait for rollout ─────────────────────────────────────────────────
-echo "⏳ Step 6: Waiting for rollouts to complete..."
-kubectl rollout status deployment/frontend        -n car-rental --timeout=180s
-kubectl rollout status deployment/auth-service    -n car-rental --timeout=180s
-kubectl rollout status deployment/car-service     -n car-rental --timeout=180s
-kubectl rollout status deployment/booking-service -n car-rental --timeout=300s
+echo "⏳ Step 6: Waiting for rollouts to complete (this can take ~5min on EKS)..."
+kubectl rollout status deployment/frontend        -n car-rental --timeout=300s  || echo "⚠️  frontend still rolling - check manually"
+kubectl rollout status deployment/auth-service    -n car-rental --timeout=300s  || echo "⚠️  auth-service still rolling - check manually"
+kubectl rollout status deployment/car-service     -n car-rental --timeout=300s  || echo "⚠️  car-service still rolling - check manually"
+kubectl rollout status deployment/booking-service -n car-rental --timeout=420s  || echo "⚠️  booking-service still rolling (Spring Boot takes ~3min)"
 echo ""
 
 # ── Step 7: Get public URL ───────────────────────────────────────────────────

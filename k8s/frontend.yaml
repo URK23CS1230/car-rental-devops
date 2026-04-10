@@ -1,33 +1,106 @@
+# =============================================================================
+# FRONTEND — Deployment + Service + HPA
+# =============================================================================
+
+# ─── Deployment ──────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: car-rental
   labels:
     app: frontend
+    tier: frontend
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: frontend
     spec:
       containers:
-      - name: frontend
-        image: yourdockerhub/frontend:latest
-        ports:
-        - containerPort: 80
+        - name: frontend
+          image: YOUR_DOCKER_USERNAME/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+
+          # Liveness — nginx serves index.html so we check root
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          # Readiness
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      restartPolicy: Always
+
 ---
+# ─── Service ─────────────────────────────────────────────────────────────────
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
+  namespace: car-rental
+  labels:
+    app: frontend
 spec:
   selector:
     app: frontend
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# ─── Horizontal Pod Autoscaler ───────────────────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: car-rental
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

@@ -42,8 +42,8 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: booking-service
-          image: car-rental-booking:latest
-          imagePullPolicy: IfNotPresent
+          image: DOCKERHUB_USERNAME/booking-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http

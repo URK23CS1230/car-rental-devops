@@ -28,8 +28,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: car-rental-frontend:latest
-          imagePullPolicy: IfNotPresent
+          image: DOCKERHUB_USERNAME/frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
               name: http
@@ -81,7 +81,10 @@ spec:
       protocol: TCP
       port: 80
       targetPort: 80
-  type: ClusterIP
+  type: LoadBalancer
+  # AWS EKS will provision an AWS Classic/Network Load Balancer automatically
+  # Run: kubectl get svc frontend -n car-rental
+  # EXTERNAL-IP will show the public AWS DNS in ~2 minutes
 
 ---
 # ─── Horizontal Pod Autoscaler ───────────────────────────────────────────────

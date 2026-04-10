@@ -42,8 +42,8 @@ spec:
               echo "MongoDB is ready!"
       containers:
         - name: auth-service
-          image: car-rental-auth:latest
-          imagePullPolicy: IfNotPresent
+          image: DOCKERHUB_USERNAME/auth-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3001
               name: http

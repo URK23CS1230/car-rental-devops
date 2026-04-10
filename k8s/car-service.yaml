@@ -12,7 +12,7 @@ metadata:
     app: car-service
     tier: backend
 spec:
-  replicas: 2
+  replicas: 1   # Reduced to 1 to fit small EKS node
   selector:
     matchLabels:
       app: car-service
@@ -42,7 +42,7 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: car-service
-          image: DOCKERHUB_USERNAME/car-service:latest
+          image: sriharidb/car-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -54,11 +54,11 @@ spec:
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "50m"
+              memory: "64Mi"
             limits:
-              cpu: "400m"
-              memory: "512Mi"
+              cpu: "300m"
+              memory: "256Mi"
 
           # Liveness — restart container if FastAPI is stuck
           livenessProbe:

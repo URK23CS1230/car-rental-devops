@@ -12,7 +12,7 @@ metadata:
     app: booking-service
     tier: backend
 spec:
-  replicas: 2
+  replicas: 1   # Reduced to 1 to fit small EKS node
   selector:
     matchLabels:
       app: booking-service
@@ -42,7 +42,7 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: booking-service
-          image: DOCKERHUB_USERNAME/booking-service:latest
+          image: sriharidb/booking-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -62,11 +62,11 @@ spec:
 
           resources:
             requests:
-              cpu: "200m"
-              memory: "512Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
               cpu: "500m"
-              memory: "1Gi"
+              memory: "512Mi"
 
           # Liveness — Spring Boot takes a moment to start; generous delay
           livenessProbe:

@@ -1,0 +1,9 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Namespace — isolate all car-rental resources
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: car-rental
+  labels:
+    app.kubernetes.io/part-of: car-rental

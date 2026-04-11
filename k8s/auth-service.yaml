@@ -1,67 +1,136 @@
+# =============================================================================
+# AUTH SERVICE — Deployment + Service + HPA
+# =============================================================================
+
+# ─── Deployment ──────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth-service
+  namespace: car-rental
   labels:
     app: auth-service
+    tier: backend
 spec:
-  replicas: 2
+  replicas: 1   # Reduced to 1 to fit small EKS node
   selector:
     matchLabels:
       app: auth-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: auth-service
     spec:
+      # Wait for MongoDB to be reachable before starting
+      initContainers:
+        - name: wait-for-mongodb
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MongoDB at mongodb:27017..."
+              until nc -z mongodb 27017; do
+                echo "MongoDB not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "MongoDB is ready!"
       containers:
-      - name: auth-service
-        image: yourdockerhub/auth-service:latest
-        ports:
-        - containerPort: 3001
-        env:
-        - name: MONGO_URI
-          value: "mongodb://mongodb:27017/authdb"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3001
-          initialDelaySeconds: 15
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3001
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: auth-service
+          image: sriharidb/auth-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+              name: http
+
+          env:
+            - name: MONGO_URI
+              value: "mongodb://mongodb:27017/authdb"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: car-rental-secrets
+                  key: JWT_SECRET
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "192Mi"
+
+          # Liveness — restart if app is stuck/deadlocked
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Readiness — only send traffic when truly ready
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      restartPolicy: Always
+
+
 ---
+# ─── Service ─────────────────────────────────────────────────────────────────
 apiVersion: v1
 kind: Service
 metadata:
   name: auth-service
+  namespace: car-rental
+  labels:
+    app: auth-service
 spec:
   selector:
     app: auth-service
   ports:
-  - protocol: TCP
-    port: 3001
-    targetPort: 3001
+    - name: http
+      protocol: TCP
+      port: 3001
+      targetPort: 3001
+  type: ClusterIP
+
 ---
+# ─── Horizontal Pod Autoscaler ───────────────────────────────────────────────
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: auth-service-hpa
+  namespace: car-rental
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: auth-service
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 8
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
